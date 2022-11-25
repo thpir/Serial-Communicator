@@ -13,10 +13,12 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
+import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +26,17 @@ class MainActivity : AppCompatActivity() {
     var m_device: UsbDevice? = null
     var m_serial: UsbSerialDevice? = null
     var m_connection: UsbDeviceConnection? = null
+    private var tv1: TextView? = null
+    private var tv2: TextView? = null
+    private var tv3: TextView? = null
+    private var tv4: TextView? = null
+    private var tv5: TextView? = null
+    private var tv6: TextView? = null
+    private var tv7: TextView? = null
+    private var tv8: TextView? = null
+    private var tv9: TextView? = null
+    private var tv10: TextView? = null
+    val list: MutableList<String> = MutableList(10) { "" }
 
     val ACTION_USB_PERMISSION = "permission"
 
@@ -43,6 +56,17 @@ class MainActivity : AppCompatActivity() {
         val off = findViewById<Button>(R.id.off)
         val disconnect = findViewById<Button>(R.id.disconnect)
         val connect = findViewById<Button>(R.id.connect)
+        tv1 = findViewById(R.id.textView1)
+        tv2 = findViewById(R.id.textView2)
+        tv3 = findViewById(R.id.textView3)
+        tv4 = findViewById(R.id.textView4)
+        tv5 = findViewById(R.id.textView5)
+        tv6 = findViewById(R.id.textView6)
+        tv7 = findViewById(R.id.textView7)
+        tv8 = findViewById(R.id.textView8)
+        tv9 = findViewById(R.id.textView9)
+        tv10 = findViewById(R.id.textView10)
+
         on.setOnClickListener() { sendData("o") }
         off.setOnClickListener() { sendData("x") }
         disconnect.setOnClickListener() { disconnect() }
@@ -98,6 +122,37 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "Disconnected", Toast.LENGTH_SHORT).show()
     }
 
+    var mCallback = UsbReadCallback { data: ByteArray? ->
+        val dataStr = String(data!!)
+        if (dataStr != "") {
+            Log.i("serial", "Data received: $dataStr")
+            updateTv(dataStr)
+        }
+    }
+
+    private fun updateTv(dataStr: String) {
+        list[9] = list[8]
+        list[8] = list[7]
+        list[7] = list[6]
+        list[6] = list[5]
+        list[5] = list[4]
+        list[4] = list[3]
+        list[3] = list[2]
+        list[2] = list[1]
+        list[1] = list[0]
+        list[0] = dataStr
+        tv1?.text = list[0]
+        tv2?.text = list[1]
+        tv3?.text = list[2]
+        tv4?.text = list[3]
+        tv5?.text = list[4]
+        tv6?.text = list[5]
+        tv7?.text = list[6]
+        tv8?.text = list[7]
+        tv9?.text = list[8]
+        tv10?.text = list[9]
+    }
+
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action!! == ACTION_USB_PERMISSION) {
@@ -112,6 +167,7 @@ class MainActivity : AppCompatActivity() {
                             m_serial!!.setStopBits(UsbSerialInterface.STOP_BITS_1)
                             m_serial!!.setParity(UsbSerialInterface.PARITY_NONE)
                             m_serial!!.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
+                            m_serial!!.read(mCallback)
                         } else {
                             Log.i("Serial", "port not open")
                             Toast.makeText(applicationContext, "port not open", Toast.LENGTH_SHORT).show()
