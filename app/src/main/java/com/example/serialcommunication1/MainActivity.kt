@@ -20,7 +20,6 @@ import androidx.appcompat.widget.Toolbar
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
-import com.google.android.material.appbar.AppBarLayout
 
 class MainActivity : AppCompatActivity() {
 
@@ -58,10 +57,10 @@ class MainActivity : AppCompatActivity() {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
         registerReceiver(broadcastReceiver, filter)
 
-        val on = findViewById<Button>(R.id.on)
-        val off = findViewById<Button>(R.id.off)
-        val disconnect = findViewById<Button>(R.id.disconnect)
-        val connect = findViewById<Button>(R.id.connect)
+        val on = findViewById<Button>(R.id.buttonSend)
+        val off = findViewById<Button>(R.id.buttonSendDateTime)
+        val disconnect = findViewById<Button>(R.id.buttonDisconnect)
+        val connect = findViewById<Button>(R.id.buttonConnect)
         tv1 = findViewById(R.id.textView1)
         tv2 = findViewById(R.id.textView2)
         tv3 = findViewById(R.id.textView3)
@@ -73,10 +72,10 @@ class MainActivity : AppCompatActivity() {
         tv9 = findViewById(R.id.textView9)
         tv10 = findViewById(R.id.textView10)
 
-        on.setOnClickListener() { sendData("o") }
-        off.setOnClickListener() { sendData("x") }
-        disconnect.setOnClickListener() { disconnect() }
-        connect.setOnClickListener() { startUsbConnecting() }
+        on.setOnClickListener { sendData("o") }
+        off.setOnClickListener { sendData("x") }
+        disconnect.setOnClickListener { disconnect() }
+        connect.setOnClickListener { startUsbConnecting() }
     }
 
     private fun startUsbConnecting() {
