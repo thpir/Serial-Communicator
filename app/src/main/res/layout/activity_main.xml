@@ -43,6 +43,7 @@
             android:layout_gravity="center_vertical"
             android:background="@color/black"/>
 
+
     </LinearLayout>
 
     <Button
@@ -140,10 +141,13 @@
         android:layout_marginEnd="30dp"
         android:hint="@string/et_enter_command_text"
         android:textAlignment="center"
+        android:textAppearance="@android:style/TextAppearance.DeviceDefault"
         app:layout_constraintBottom_toBottomOf="@+id/buttonSendDateTime"
         app:layout_constraintEnd_toStartOf="@+id/buttonSend"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/buttonSend"/>
+        app:layout_constraintTop_toTopOf="@+id/buttonSend"
+        android:autofillHints="char"
+        android:inputType="text" />
 
     <LinearLayout
         android:id="@+id/linearLayoutRxSeparator"

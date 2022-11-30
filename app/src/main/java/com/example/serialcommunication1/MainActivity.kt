@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,10 +24,10 @@ import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var m_usbManager: UsbManager
-    var m_device: UsbDevice? = null
-    var m_serial: UsbSerialDevice? = null
-    var m_connection: UsbDeviceConnection? = null
+    lateinit var mUsbManager: UsbManager
+    var mDevice: UsbDevice? = null
+    var mSerial: UsbSerialDevice? = null
+    var mConnection: UsbDeviceConnection? = null
     private var tv1: TextView? = null
     private var tv2: TextView? = null
     private var tv3: TextView? = null
@@ -37,7 +38,8 @@ class MainActivity : AppCompatActivity() {
     private var tv8: TextView? = null
     private var tv9: TextView? = null
     private var tv10: TextView? = null
-    val list: MutableList<String> = MutableList(10) { "" }
+    private var textToTransmit: EditText? = null
+    private val list: MutableList<String> = MutableList(10) { "" }
 
     val ACTION_USB_PERMISSION = "permission"
 
@@ -45,11 +47,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        var toolbar = findViewById<Toolbar>(R.id.toolbar)
+        val toolbar = findViewById<Toolbar>(R.id.toolbar)
         toolbar.setLogo(R.drawable.ic_usb)
         setSupportActionBar(toolbar)
 
-        m_usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
+        mUsbManager = getSystemService(Context.USB_SERVICE) as UsbManager
 
         val filter = IntentFilter()
         filter.addAction(ACTION_USB_PERMISSION)
@@ -57,10 +59,11 @@ class MainActivity : AppCompatActivity() {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
         registerReceiver(broadcastReceiver, filter)
 
-        val on = findViewById<Button>(R.id.buttonSend)
-        val off = findViewById<Button>(R.id.buttonSendDateTime)
+        val send = findViewById<Button>(R.id.buttonSend)
+        val sendDateTime = findViewById<Button>(R.id.buttonSendDateTime)
         val disconnect = findViewById<Button>(R.id.buttonDisconnect)
         val connect = findViewById<Button>(R.id.buttonConnect)
+        textToTransmit = findViewById<EditText>(R.id.editTextSend)
         tv1 = findViewById(R.id.textView1)
         tv2 = findViewById(R.id.textView2)
         tv3 = findViewById(R.id.textView3)
@@ -72,19 +75,28 @@ class MainActivity : AppCompatActivity() {
         tv9 = findViewById(R.id.textView9)
         tv10 = findViewById(R.id.textView10)
 
-        on.setOnClickListener { sendData("o") }
-        off.setOnClickListener { sendData("x") }
+        send.setOnClickListener {
+            var transmission = ""
+            transmission = textToTransmit?.text.toString()
+            if (transmission != "") {
+                sendData(transmission)
+            } else {
+                Log.i("serial", "No transmission text available")
+                Toast.makeText(this, "No transmission text available", Toast.LENGTH_SHORT).show()
+            }
+        }
+        sendDateTime.setOnClickListener { sendData("x") }
         disconnect.setOnClickListener { disconnect() }
         connect.setOnClickListener { startUsbConnecting() }
     }
 
     private fun startUsbConnecting() {
-        val usbDevices: HashMap<String, UsbDevice>? = m_usbManager.deviceList
+        val usbDevices: HashMap<String, UsbDevice>? = mUsbManager.deviceList
         if (!usbDevices?.isEmpty()!!) {
             var keep = true
             usbDevices.forEach{ entry ->
-                m_device = entry.value
-                val deviceVendorId: Int? = m_device?.vendorId
+                mDevice = entry.value
+                val deviceVendorId: Int? = mDevice?.vendorId
                 Log.i("serial", "verdorId: "+deviceVendorId)
                 Toast.makeText(this, "vendorId: "+deviceVendorId, Toast.LENGTH_SHORT).show()
                 if (deviceVendorId == 9025) {
@@ -95,13 +107,13 @@ class MainActivity : AppCompatActivity() {
                         PendingIntent.getBroadcast(this, 0, Intent(ACTION_USB_PERMISSION),
                             0)
                     }
-                    m_usbManager.requestPermission(m_device, intent)
+                    mUsbManager.requestPermission(mDevice, intent)
                     keep = false
                     Log.i("serial", "connection successful")
                     Toast.makeText(this, "connection successful", Toast.LENGTH_SHORT).show()
                 } else {
-                    m_connection = null
-                    m_device = null
+                    mConnection = null
+                    mDevice = null
                     Log.i("serial", "unable to connect")
                     Toast.makeText(this, "unable to connect", Toast.LENGTH_SHORT).show()
                 }
@@ -116,13 +128,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendData(input: String) {
-        m_serial?.write(input.toByteArray())
+        mSerial?.write(input.toByteArray())
         Log.i("serial", "sending data: "+input.toByteArray())
         Toast.makeText(this, "sending data: "+input.toByteArray(), Toast.LENGTH_SHORT).show()
     }
 
     private fun disconnect() {
-        m_serial?.close()
+        mSerial?.close()
         Log.i("serial", "Disconnected")
         Toast.makeText(this, "Disconnected", Toast.LENGTH_SHORT).show()
     }
@@ -163,16 +175,16 @@ class MainActivity : AppCompatActivity() {
             if (intent?.action!! == ACTION_USB_PERMISSION) {
                 val granted: Boolean = intent.extras!!.getBoolean(UsbManager.EXTRA_PERMISSION_GRANTED)
                 if (granted) {
-                    m_connection = m_usbManager.openDevice(m_device)
-                    m_serial = UsbSerialDevice.createUsbSerialDevice(m_device, m_connection)
-                    if (m_serial != null) {
-                        if (m_serial!!.open()) {
-                            m_serial!!.setBaudRate(9600)
-                            m_serial!!.setDataBits(UsbSerialInterface.DATA_BITS_8)
-                            m_serial!!.setStopBits(UsbSerialInterface.STOP_BITS_1)
-                            m_serial!!.setParity(UsbSerialInterface.PARITY_NONE)
-                            m_serial!!.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
-                            m_serial!!.read(mCallback)
+                    mConnection = mUsbManager.openDevice(mDevice)
+                    mSerial = UsbSerialDevice.createUsbSerialDevice(mDevice, mConnection)
+                    if (mSerial != null) {
+                        if (mSerial!!.open()) {
+                            mSerial!!.setBaudRate(9600)
+                            mSerial!!.setDataBits(UsbSerialInterface.DATA_BITS_8)
+                            mSerial!!.setStopBits(UsbSerialInterface.STOP_BITS_1)
+                            mSerial!!.setParity(UsbSerialInterface.PARITY_NONE)
+                            mSerial!!.setFlowControl(UsbSerialInterface.FLOW_CONTROL_OFF)
+                            mSerial!!.read(mCallback)
                         } else {
                             Log.i("Serial", "port not open")
                             Toast.makeText(applicationContext, "port not open", Toast.LENGTH_SHORT).show()
