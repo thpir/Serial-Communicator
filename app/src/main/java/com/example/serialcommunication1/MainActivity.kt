@@ -11,6 +11,8 @@ import android.hardware.usb.UsbDeviceConnection
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -19,7 +21,6 @@ import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
 import java.util.*
-import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity() {
 
@@ -27,6 +28,8 @@ class MainActivity : AppCompatActivity() {
     var mDevice: UsbDevice? = null
     var mSerial: UsbSerialDevice? = null
     var mConnection: UsbDeviceConnection? = null
+    private var dataSteam = ""
+    private var newData = false
     private lateinit var tv1: TextView
     private lateinit var tv2: TextView
     private lateinit var tv3: TextView
@@ -39,8 +42,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tv10: TextView
     private lateinit var spinner: Spinner
     private lateinit var textToTransmit: EditText
+    lateinit var mainHandler: Handler
     private val list: MutableList<String> = MutableList(10) { "" }
-    private val availableDevices = arrayOf<String>()
+    private val availableDevices = mutableListOf<String>()
 
     val ACTION_USB_PERMISSION = "permission"
 
@@ -60,10 +64,13 @@ class MainActivity : AppCompatActivity() {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
         registerReceiver(broadcastReceiver, filter)
 
+        mainHandler = Handler(Looper.getMainLooper())
+
         val send: Button = findViewById(R.id.buttonSend)
         val sendDateTime: Button = findViewById(R.id.buttonSendDateTime)
         val disconnect: Button = findViewById(R.id.buttonDisconnect)
         val connect: Button = findViewById(R.id.buttonConnect)
+        val scan: Button = findViewById(R.id.buttonScan)
         textToTransmit = findViewById(R.id.editTextSend)
         tv1 = findViewById(R.id.textView1)
         tv2 = findViewById(R.id.textView2)
@@ -99,9 +106,21 @@ class MainActivity : AppCompatActivity() {
         disconnect.setOnClickListener { disconnect() }
 
         connect.setOnClickListener { startUsbConnecting() }
+
+        scan.setOnClickListener { startScanning() }
     }
 
-    private fun populateSpinner(availableDevices: Array<String>) {
+    override fun onPause() {
+        super.onPause()
+        mainHandler.removeCallbacks(thread)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainHandler.post(thread)
+    }
+
+    private fun populateSpinner(availableDevices: MutableList<String>) {
         // Create an ArrayAdapter using the string array and a default spinner layout
         val arrayAdapter: ArrayAdapter<String> = ArrayAdapter<String>(
             this,
@@ -116,16 +135,41 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    private fun startScanning() {
+        val usbDevices: HashMap<String, UsbDevice>? = mUsbManager.deviceList
+        if (!usbDevices?.isEmpty()!!) {
+            usbDevices.forEach{ entry ->
+                mDevice = entry.value
+                val deviceVendorId: Int? = mDevice?.vendorId
+                Log.i("serial", "verdorId: "+deviceVendorId)
+                Toast.makeText(this, "vendorId: "+deviceVendorId, Toast.LENGTH_SHORT).show()
+                // Add vendorId to mutableList
+                availableDevices.add(deviceVendorId.toString())
+            }
+        } else {
+            Log.i("serial", "no usb device connected")
+            Toast.makeText(this, "no usb device connected", Toast.LENGTH_SHORT).show()
+        }
+        populateSpinner(availableDevices)
+    }
+
     private fun startUsbConnecting() {
         val usbDevices: HashMap<String, UsbDevice>? = mUsbManager.deviceList
         if (!usbDevices?.isEmpty()!!) {
+            var selectedItem = ""
+            if (availableDevices.isNotEmpty()) {
+                selectedItem = spinner.selectedItem.toString()
+            } else {
+                Log.i("serial", "No device selected, scan for devices first")
+                Toast.makeText(this, "No device selected, scan for devices first", Toast.LENGTH_SHORT).show()
+            }
             var keep = true
             usbDevices.forEach{ entry ->
                 mDevice = entry.value
                 val deviceVendorId: Int? = mDevice?.vendorId
                 Log.i("serial", "verdorId: "+deviceVendorId)
                 Toast.makeText(this, "vendorId: "+deviceVendorId, Toast.LENGTH_SHORT).show()
-                if (deviceVendorId == 9025) {
+                if (deviceVendorId.toString() == selectedItem) {
                     val intent: PendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         PendingIntent.getBroadcast(this, 0, Intent(ACTION_USB_PERMISSION),
                             FLAG_MUTABLE)
@@ -163,13 +207,27 @@ class MainActivity : AppCompatActivity() {
         mSerial?.close()
         Log.i("serial", "Disconnected")
         Toast.makeText(this, "Disconnected", Toast.LENGTH_SHORT).show()
+        availableDevices.clear()
+        populateSpinner(availableDevices)
     }
 
     var mCallback = UsbReadCallback { data: ByteArray? ->
         val dataStr = String(data!!)
         if (dataStr != "") {
             Log.i("serial", "Data received: $dataStr")
-            updateTv(dataStr)
+            dataSteam = dataStr
+            newData = true
+            //updateTv(dataStr)
+        }
+    }
+
+    private val thread = object : Runnable {
+        override fun run() {
+            if (newData) {
+                updateTv(dataSteam)
+                newData = false
+            }
+            mainHandler.postDelayed(this, 1000)
         }
     }
 
@@ -184,16 +242,16 @@ class MainActivity : AppCompatActivity() {
         list[2] = list[1]
         list[1] = list[0]
         list[0] = dataStr
-        tv1?.text = list[0]
-        tv2?.text = list[1]
-        tv3?.text = list[2]
-        tv4?.text = list[3]
-        tv5?.text = list[4]
-        tv6?.text = list[5]
-        tv7?.text = list[6]
-        tv8?.text = list[7]
-        tv9?.text = list[8]
-        tv10?.text = list[9]
+        tv1.text = list[0]
+        tv2.text = list[1]
+        tv3.text = list[2]
+        tv4.text = list[3]
+        tv5.text = list[4]
+        tv6.text = list[5]
+        tv7.text = list[6]
+        tv8.text = list[7]
+        tv9.text = list[8]
+        tv10.text = list[9]
     }
 
     private val broadcastReceiver = object : BroadcastReceiver() {

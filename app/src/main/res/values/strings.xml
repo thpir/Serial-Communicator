@@ -1,11 +1,12 @@
 <resources>
     <string name="app_name">Serial Communication 1</string>
-    <string name="tv_settings_text">Settings</string>
-    <string name="btn_connect_text">connect</string>
-    <string name="btn_disconnect_text">disconnect</string>
-    <string name="tv_tx_text">TX</string>
     <string name="btn_send_text">Send</string>
     <string name="btn_send_datetime_text">send datetime</string>
-    <string name="et_enter_command_text">Enter command</string>
+    <string name="btn_scan_text">Scan for devices</string>
+    <string name="btn_connect_text">connect</string>
+    <string name="btn_disconnect_text">disconnect</string>
+    <string name="tv_settings_text">Settings</string>
+    <string name="tv_tx_text">TX</string>
     <string name="tv_rx_text">RX</string>
+    <string name="et_enter_command_text">Enter command</string>
 </resources>
