@@ -12,15 +12,14 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
+import java.util.*
+import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,18 +27,20 @@ class MainActivity : AppCompatActivity() {
     var mDevice: UsbDevice? = null
     var mSerial: UsbSerialDevice? = null
     var mConnection: UsbDeviceConnection? = null
-    private var tv1: TextView? = null
-    private var tv2: TextView? = null
-    private var tv3: TextView? = null
-    private var tv4: TextView? = null
-    private var tv5: TextView? = null
-    private var tv6: TextView? = null
-    private var tv7: TextView? = null
-    private var tv8: TextView? = null
-    private var tv9: TextView? = null
-    private var tv10: TextView? = null
-    private var textToTransmit: EditText? = null
+    private lateinit var tv1: TextView
+    private lateinit var tv2: TextView
+    private lateinit var tv3: TextView
+    private lateinit var tv4: TextView
+    private lateinit var tv5: TextView
+    private lateinit var tv6: TextView
+    private lateinit var tv7: TextView
+    private lateinit var tv8: TextView
+    private lateinit var tv9: TextView
+    private lateinit var tv10: TextView
+    private lateinit var spinner: Spinner
+    private lateinit var textToTransmit: EditText
     private val list: MutableList<String> = MutableList(10) { "" }
+    private val availableDevices = arrayOf<String>()
 
     val ACTION_USB_PERMISSION = "permission"
 
@@ -59,11 +60,11 @@ class MainActivity : AppCompatActivity() {
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
         registerReceiver(broadcastReceiver, filter)
 
-        val send = findViewById<Button>(R.id.buttonSend)
-        val sendDateTime = findViewById<Button>(R.id.buttonSendDateTime)
-        val disconnect = findViewById<Button>(R.id.buttonDisconnect)
-        val connect = findViewById<Button>(R.id.buttonConnect)
-        textToTransmit = findViewById<EditText>(R.id.editTextSend)
+        val send: Button = findViewById(R.id.buttonSend)
+        val sendDateTime: Button = findViewById(R.id.buttonSendDateTime)
+        val disconnect: Button = findViewById(R.id.buttonDisconnect)
+        val connect: Button = findViewById(R.id.buttonConnect)
+        textToTransmit = findViewById(R.id.editTextSend)
         tv1 = findViewById(R.id.textView1)
         tv2 = findViewById(R.id.textView2)
         tv3 = findViewById(R.id.textView3)
@@ -74,10 +75,13 @@ class MainActivity : AppCompatActivity() {
         tv8 = findViewById(R.id.textView8)
         tv9 = findViewById(R.id.textView9)
         tv10 = findViewById(R.id.textView10)
+        spinner = findViewById(R.id.spinnerVendorId)
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        populateSpinner(availableDevices)
 
         send.setOnClickListener {
             var transmission = ""
-            transmission = textToTransmit?.text.toString()
+            transmission = textToTransmit.text.toString()
             if (transmission != "") {
                 sendData(transmission)
             } else {
@@ -85,9 +89,31 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this, "No transmission text available", Toast.LENGTH_SHORT).show()
             }
         }
-        sendDateTime.setOnClickListener { sendData("x") }
+
+        sendDateTime.setOnClickListener {
+            val calendar = Calendar.getInstance()
+            val time = calendar.timeInMillis
+            sendData(time.toString())
+        }
+
         disconnect.setOnClickListener { disconnect() }
+
         connect.setOnClickListener { startUsbConnecting() }
+    }
+
+    private fun populateSpinner(availableDevices: Array<String>) {
+        // Create an ArrayAdapter using the string array and a default spinner layout
+        val arrayAdapter: ArrayAdapter<String> = ArrayAdapter<String>(
+            this,
+            android.R.layout.simple_spinner_item,
+            availableDevices
+        ).also { arrayAdapter ->
+            // Specify the layout to use when the list of choices appears
+            arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            // Apply the adapter to the spinner
+            spinner.adapter = arrayAdapter
+        }
+
     }
 
     private fun startUsbConnecting() {
