@@ -9,4 +9,5 @@
     <string name="tv_tx_text">TX</string>
     <string name="tv_rx_text">RX</string>
     <string name="et_enter_command_text">Enter command</string>
+    <string name="tv_select_vendor_text">Select vendor ID:</string>
 </resources>

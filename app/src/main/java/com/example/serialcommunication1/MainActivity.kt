@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private val list: MutableList<String> = MutableList(10) { "" }
     private val availableDevices = mutableListOf<String>()
 
-    val ACTION_USB_PERMISSION = "permission"
+    val permission = "permission"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity() {
         mUsbManager = getSystemService(Context.USB_SERVICE) as UsbManager
 
         val filter = IntentFilter()
-        filter.addAction(ACTION_USB_PERMISSION)
+        filter.addAction(permission)
         filter.addAction(UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
         filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
         registerReceiver(broadcastReceiver, filter)
@@ -87,20 +87,30 @@ class MainActivity : AppCompatActivity() {
         populateSpinner(availableDevices)
 
         send.setOnClickListener {
-            var transmission = ""
-            transmission = textToTransmit.text.toString()
-            if (transmission != "") {
-                sendData(transmission)
+            if (mUsbManager.openDevice(mDevice) != null) {
+                val transmission: String = textToTransmit.text.toString()
+                if (transmission != "") {
+                    sendData(transmission)
+                    textToTransmit.setText("")
+                } else {
+                    Log.i("serial", "No transmission text available")
+                    Toast.makeText(this, "No transmission text available", Toast.LENGTH_SHORT).show()
+                }
             } else {
-                Log.i("serial", "No transmission text available")
-                Toast.makeText(this, "No transmission text available", Toast.LENGTH_SHORT).show()
+                Log.i("serial", "No device connected")
+                Toast.makeText(this, "No device connected", Toast.LENGTH_SHORT).show()
             }
         }
 
         sendDateTime.setOnClickListener {
             val calendar = Calendar.getInstance()
             val time = calendar.timeInMillis
-            sendData(time.toString())
+            if (mUsbManager.openDevice(mDevice) != null) {
+                sendData(time.toString())
+            } else {
+                Log.i("serial", "No device connected")
+                Toast.makeText(this, "No device connected", Toast.LENGTH_SHORT).show()
+            }
         }
 
         disconnect.setOnClickListener { disconnect() }
@@ -122,7 +132,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun populateSpinner(availableDevices: MutableList<String>) {
         // Create an ArrayAdapter using the string array and a default spinner layout
-        val arrayAdapter: ArrayAdapter<String> = ArrayAdapter<String>(
+        ArrayAdapter(
             this,
             android.R.layout.simple_spinner_item,
             availableDevices
@@ -141,8 +151,8 @@ class MainActivity : AppCompatActivity() {
             usbDevices.forEach{ entry ->
                 mDevice = entry.value
                 val deviceVendorId: Int? = mDevice?.vendorId
-                Log.i("serial", "verdorId: "+deviceVendorId)
-                Toast.makeText(this, "vendorId: "+deviceVendorId, Toast.LENGTH_SHORT).show()
+                Log.i("serial", "vendorId:  $deviceVendorId")
+                Toast.makeText(this, "vendorId: $deviceVendorId", Toast.LENGTH_SHORT).show()
                 // Add vendorId to mutableList
                 availableDevices.add(deviceVendorId.toString())
             }
@@ -157,24 +167,27 @@ class MainActivity : AppCompatActivity() {
         val usbDevices: HashMap<String, UsbDevice>? = mUsbManager.deviceList
         if (!usbDevices?.isEmpty()!!) {
             var selectedItem = ""
+            var selectedItemId = 0
             if (availableDevices.isNotEmpty()) {
                 selectedItem = spinner.selectedItem.toString()
+                selectedItemId = spinner.selectedItemPosition
             } else {
                 Log.i("serial", "No device selected, scan for devices first")
                 Toast.makeText(this, "No device selected, scan for devices first", Toast.LENGTH_SHORT).show()
             }
             var keep = true
+            var i = 0
             usbDevices.forEach{ entry ->
                 mDevice = entry.value
                 val deviceVendorId: Int? = mDevice?.vendorId
-                Log.i("serial", "verdorId: "+deviceVendorId)
-                Toast.makeText(this, "vendorId: "+deviceVendorId, Toast.LENGTH_SHORT).show()
-                if (deviceVendorId.toString() == selectedItem) {
+                Log.i("serial", "verdorId: $deviceVendorId")
+                Toast.makeText(this, "vendorId: $deviceVendorId", Toast.LENGTH_SHORT).show()
+                if (deviceVendorId.toString() == selectedItem && i == selectedItemId) {
                     val intent: PendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        PendingIntent.getBroadcast(this, 0, Intent(ACTION_USB_PERMISSION),
+                        PendingIntent.getBroadcast(this, 0, Intent(permission),
                             FLAG_MUTABLE)
                     } else {
-                        PendingIntent.getBroadcast(this, 0, Intent(ACTION_USB_PERMISSION),
+                        PendingIntent.getBroadcast(this, 0, Intent(permission),
                             0)
                     }
                     mUsbManager.requestPermission(mDevice, intent)
@@ -190,6 +203,7 @@ class MainActivity : AppCompatActivity() {
                 if (!keep) {
                     return
                 }
+                i++
             }
         } else {
             Log.i("serial", "no usb device connected")
@@ -205,30 +219,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun disconnect() {
         mSerial?.close()
+        mDevice = null
         Log.i("serial", "Disconnected")
         Toast.makeText(this, "Disconnected", Toast.LENGTH_SHORT).show()
         availableDevices.clear()
         populateSpinner(availableDevices)
-    }
-
-    var mCallback = UsbReadCallback { data: ByteArray? ->
-        val dataStr = String(data!!)
-        if (dataStr != "") {
-            Log.i("serial", "Data received: $dataStr")
-            dataSteam = dataStr
-            newData = true
-            //updateTv(dataStr)
-        }
-    }
-
-    private val thread = object : Runnable {
-        override fun run() {
-            if (newData) {
-                updateTv(dataSteam)
-                newData = false
-            }
-            mainHandler.postDelayed(this, 1000)
-        }
     }
 
     private fun updateTv(dataStr: String) {
@@ -256,7 +251,7 @@ class MainActivity : AppCompatActivity() {
 
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action!! == ACTION_USB_PERMISSION) {
+            if (intent?.action!! == permission) {
                 val granted: Boolean = intent.extras!!.getBoolean(UsbManager.EXTRA_PERMISSION_GRANTED)
                 if (granted) {
                     mConnection = mUsbManager.openDevice(mDevice)
@@ -286,6 +281,26 @@ class MainActivity : AppCompatActivity() {
             } else if (intent.action == UsbManager.ACTION_USB_ACCESSORY_DETACHED) {
                 disconnect()
             }
+        }
+    }
+
+    var mCallback = UsbReadCallback { data: ByteArray? ->
+        val dataStr = String(data!!)
+        if (dataStr != "") {
+            Log.i("serial", "Data received: $dataStr")
+            dataSteam = dataStr
+            newData = true
+            //updateTv(dataStr)
+        }
+    }
+
+    private val thread = object : Runnable {
+        override fun run() {
+            if (newData) {
+                updateTv(dataSteam)
+                newData = false
+            }
+            mainHandler.postDelayed(this, 1000)
         }
     }
 }
