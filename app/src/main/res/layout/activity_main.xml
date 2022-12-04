@@ -92,7 +92,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@id/buttonScan"/>
 
-
     <Spinner
         android:id="@+id/spinnerVendorId"
         android:layout_width="0dp"
