@@ -13,8 +13,10 @@ void loop() {
     incomingByte = Serial.read();
     if(incomingByte == 'o') {
       digitalWrite(led, HIGH);
+      Serial.write('o');
     }else if (incomingByte == 'x') {
       digitalWrite(led, LOW);
+      Serial.write('x');
     }else {
       // Do nothing
     }

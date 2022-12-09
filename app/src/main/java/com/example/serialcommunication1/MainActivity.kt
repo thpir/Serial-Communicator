@@ -2,6 +2,7 @@ package com.example.serialcommunication1
 
 import android.app.PendingIntent
 import android.app.PendingIntent.FLAG_MUTABLE
+import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,6 +18,7 @@ import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.ContextCompat
 import com.felhr.usbserial.UsbSerialDevice
 import com.felhr.usbserial.UsbSerialInterface
 import com.felhr.usbserial.UsbSerialInterface.UsbReadCallback
@@ -24,12 +26,12 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var mUsbManager: UsbManager
-    var mDevice: UsbDevice? = null
-    var mSerial: UsbSerialDevice? = null
-    var mConnection: UsbDeviceConnection? = null
-    private var dataSteam = ""
+    private var mDevice: UsbDevice? = null
+    private var mSerial: UsbSerialDevice? = null
+    private var mConnection: UsbDeviceConnection? = null
+    private var dataStream = ""
     private var newData = false
+    private lateinit var mUsbManager: UsbManager
     private lateinit var tv1: TextView
     private lateinit var tv2: TextView
     private lateinit var tv3: TextView
@@ -42,18 +44,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tv10: TextView
     private lateinit var spinner: Spinner
     private lateinit var textToTransmit: EditText
-    lateinit var mainHandler: Handler
+    private lateinit var mainHandler: Handler
     private val list: MutableList<String> = MutableList(10) { "" }
     private val availableDevices = mutableListOf<String>()
-
-    val permission = "permission"
+    private val permission = "permission"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Initialise the Toolbar
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         toolbar.setLogo(R.drawable.ic_usb)
+        toolbar.setTitleTextColor(ContextCompat.getColor(this, R.color.secondary_app_color))
         setSupportActionBar(toolbar)
 
         mUsbManager = getSystemService(Context.USB_SERVICE) as UsbManager
@@ -83,22 +86,30 @@ class MainActivity : AppCompatActivity() {
         tv9 = findViewById(R.id.textView9)
         tv10 = findViewById(R.id.textView10)
         spinner = findViewById(R.id.spinnerVendorId)
+
         // Create an ArrayAdapter using the string array and a default spinner layout
         populateSpinner(availableDevices)
+
 
         send.setOnClickListener {
             if (mUsbManager.openDevice(mDevice) != null) {
                 val transmission: String = textToTransmit.text.toString()
-                if (transmission != "") {
+                //sendData(transmission)
+                //textToTransmit.setText("")
+            if (transmission != "") {
                     sendData(transmission)
                     textToTransmit.setText("")
                 } else {
                     Log.i("serial", "No transmission text available")
-                    Toast.makeText(this, "No transmission text available", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this,
+                        "No transmission text available",
+                        Toast.LENGTH_SHORT).show()
                 }
             } else {
                 Log.i("serial", "No device connected")
-                Toast.makeText(this, "No device connected", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this,
+                    "No device connected",
+                    Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -109,7 +120,9 @@ class MainActivity : AppCompatActivity() {
                 sendData(time.toString())
             } else {
                 Log.i("serial", "No device connected")
-                Toast.makeText(this, "No device connected", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this,
+                    "No device connected",
+                    Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -134,11 +147,11 @@ class MainActivity : AppCompatActivity() {
         // Create an ArrayAdapter using the string array and a default spinner layout
         ArrayAdapter(
             this,
-            android.R.layout.simple_spinner_item,
+            R.layout.spinner_item,
             availableDevices
         ).also { arrayAdapter ->
             // Specify the layout to use when the list of choices appears
-            arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            arrayAdapter.setDropDownViewResource(R.layout.spinner_item)
             // Apply the adapter to the spinner
             spinner.adapter = arrayAdapter
         }
@@ -152,13 +165,17 @@ class MainActivity : AppCompatActivity() {
                 mDevice = entry.value
                 val deviceVendorId: Int? = mDevice?.vendorId
                 Log.i("serial", "vendorId:  $deviceVendorId")
-                Toast.makeText(this, "vendorId: $deviceVendorId", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this,
+                    "vendorId: $deviceVendorId",
+                    Toast.LENGTH_SHORT).show()
                 // Add vendorId to mutableList
                 availableDevices.add(deviceVendorId.toString())
             }
         } else {
             Log.i("serial", "no usb device connected")
-            Toast.makeText(this, "no usb device connected", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,
+                "no usb device connected",
+                Toast.LENGTH_SHORT).show()
         }
         populateSpinner(availableDevices)
     }
@@ -173,15 +190,15 @@ class MainActivity : AppCompatActivity() {
                 selectedItemId = spinner.selectedItemPosition
             } else {
                 Log.i("serial", "No device selected, scan for devices first")
-                Toast.makeText(this, "No device selected, scan for devices first", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this,
+                    "No device selected, scan for devices first",
+                    Toast.LENGTH_SHORT).show()
             }
             var keep = true
             var i = 0
             usbDevices.forEach{ entry ->
                 mDevice = entry.value
                 val deviceVendorId: Int? = mDevice?.vendorId
-                Log.i("serial", "verdorId: $deviceVendorId")
-                Toast.makeText(this, "vendorId: $deviceVendorId", Toast.LENGTH_SHORT).show()
                 if (deviceVendorId.toString() == selectedItem && i == selectedItemId) {
                     val intent: PendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         PendingIntent.getBroadcast(this, 0, Intent(permission),
@@ -193,12 +210,16 @@ class MainActivity : AppCompatActivity() {
                     mUsbManager.requestPermission(mDevice, intent)
                     keep = false
                     Log.i("serial", "connection successful")
-                    Toast.makeText(this, "connection successful", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this,
+                        "connection successful",
+                        Toast.LENGTH_SHORT).show()
                 } else {
                     mConnection = null
                     mDevice = null
                     Log.i("serial", "unable to connect")
-                    Toast.makeText(this, "unable to connect", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this,
+                        "unable to connect",
+                        Toast.LENGTH_SHORT).show()
                 }
                 if (!keep) {
                     return
@@ -207,25 +228,37 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             Log.i("serial", "no usb device connected")
-            Toast.makeText(this, "no usb device connected", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,
+                "no usb device connected",
+                Toast.LENGTH_SHORT).show()
         }
     }
 
+    // Convert the string into a bytearray and send it to the connected device
     private fun sendData(input: String) {
-        mSerial?.write(input.toByteArray())
-        Log.i("serial", "sending data: "+input.toByteArray())
-        Toast.makeText(this, "sending data: "+input.toByteArray(), Toast.LENGTH_SHORT).show()
+        val charset = Charsets.UTF_8
+        val byteArray = input.toByteArray(charset)
+        mSerial?.write(byteArray)
+        Log.i("serial",
+            "sending data: "+byteArray.contentToString()+" "+byteArray.toString(charset))
+        Toast.makeText(this,
+            "sending data: "+byteArray.contentToString()+" "+byteArray.toString(charset),
+            Toast.LENGTH_SHORT).show()
     }
 
+    // Close the serial connections
     private fun disconnect() {
         mSerial?.close()
         mDevice = null
         Log.i("serial", "Disconnected")
-        Toast.makeText(this, "Disconnected", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this,
+            "Disconnected",
+            Toast.LENGTH_SHORT).show()
         availableDevices.clear()
         populateSpinner(availableDevices)
     }
 
+    // This function shifts all "old" data one row lower and adds the new data to the upper most tv
     private fun updateTv(dataStr: String) {
         list[9] = list[8]
         list[8] = list[7]
@@ -266,15 +299,21 @@ class MainActivity : AppCompatActivity() {
                             mSerial!!.read(mCallback)
                         } else {
                             Log.i("Serial", "port not open")
-                            Toast.makeText(applicationContext, "port not open", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(applicationContext,
+                                "port not open",
+                                Toast.LENGTH_SHORT).show()
                         }
                     } else {
                         Log.i("Serial", "port is null")
-                        Toast.makeText(applicationContext, "port is null", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(applicationContext,
+                            "port is null",
+                            Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Log.i("Serial", "permission not granted")
-                    Toast.makeText(applicationContext, "permission not granted", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext,
+                        "permission not granted",
+                        Toast.LENGTH_SHORT).show()
                 }
             } else if (intent.action == UsbManager.ACTION_USB_ACCESSORY_ATTACHED){
                 startUsbConnecting()
@@ -288,7 +327,7 @@ class MainActivity : AppCompatActivity() {
         val dataStr = String(data!!)
         if (dataStr != "") {
             Log.i("serial", "Data received: $dataStr")
-            dataSteam = dataStr
+            dataStream = dataStr
             newData = true
             //updateTv(dataStr)
         }
@@ -297,10 +336,10 @@ class MainActivity : AppCompatActivity() {
     private val thread = object : Runnable {
         override fun run() {
             if (newData) {
-                updateTv(dataSteam)
+                updateTv(dataStream)
                 newData = false
             }
-            mainHandler.postDelayed(this, 1000)
+           mainHandler.postDelayed(this, 1000)
         }
     }
 }
